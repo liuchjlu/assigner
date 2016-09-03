@@ -1,0 +1,21 @@
+0. assigner 简介
+	.assigner是一款基于etcd和pipework的ip自动分配工具。可以从应用的ip池中自动获取ip并分配给pod或者container
+
+1. assigner 安装
+	.*以下步骤每个物理机均需要实施
+	.将assigner程序、pipework程序放置到/usr/local/bin或者其他能够直接命令启动的路径下
+	.使用kubelet-yxb代替kubelet
+	.添加一个环境变量，名字必须为 ETCDPATH
+
+2. assigner 使用指南
+	.manage，在一个etcd集群中只需要运行一次，将桥接和子网掩码上传到etcd
+	.import，每一个app仅需要运行一次，填写相关yaml文件即可。如果要更新信息（特别是存在ip不可用的情况），请使用etcdctl手动删除该app目录后重新import。
+	.delete，用于手动删除ip和container的对应关系。仅支持解锁ip。
+	.get，已集成在kubelet-yxb程序中，一般不需要手动执行。
+
+3. 使用kubelet-yxb调用assigner
+	.使用kubelet-yxb调用assigner有两个必要条件，其一是设置了 ETCDPATH，其二是检测到pod的env内有key为APP的键值对。这俩条件缺一都不会调用assigner，而是正常使用kubelet原有功能。
+	.定义kubernetes的rc（pod）文件时，添加一个env，其key必须为 APP ，其value为对应的app的信息，且必须为 app:component 格式。如果已经检测到APP，且APP设置不正常，可能会存在pod没有任何ip的问题，即分配ip失败。
+
+4. 使用assigner前提条件
+	.所有物理机均已设置桥接，且以桥接为docker的桥而非docker0，详见http://blog.163.com/hk_bs/blog/static/245038011201631931849968/
