@@ -81,24 +81,7 @@ func get(containerid, app, component string, etcdpath string) error {
 	hasSet := false
 	strip := ip + "/" + netmask + "@" + gateway
 	for times := 3; times != 0; times-- {
-		cmd := exec.Command("pipework", bridge, containerid, strip)
-		log.Debugf("cli.get(): args for pipework  %+v %+v %+v \n", bridge, containerid, strip)
-		// get  pipe stdout
-		cmdReader, err := cmd.StdoutPipe()
-		if err != nil {
-			log.Errorf("Error creating StdoutPipe for Cmd :%+v\n", err)
-		}
-		scanner := bufio.NewScanner(cmdReader)
-		go func() {
-			// watch the stdout for cmd
-			for scanner.Scan() {
-				log.Warnf("exec pipework out:%+v\n", scanner.Text())
-			}
-		}()
-		// run cmd
-		if err := cmd.Run(); err != nil {
-			log.Errorf("cli.get(): cmd exec %+v\n", err)
-		}
+		ExecPipework(bridge, containerid, strip)
 		time.Sleep(5 * time.Second)
 		// ping this ip and check it is useful
 		alive := ping.Ping(ip, 3)
@@ -106,6 +89,7 @@ func get(containerid, app, component string, etcdpath string) error {
 		if alive != true {
 			continue
 		}
+
 		hasSet = true
 		log.Infof("cli.get():get ip success, container=%+v , ip=%+v\n", containerid, ip)
 		break
@@ -118,4 +102,25 @@ func get(containerid, app, component string, etcdpath string) error {
 	}
 	log.Infoln("cli.get(): Get success")
 	return nil
+}
+
+func ExecPipework(bridge, containerid, strip string) {
+	cmd := exec.Command("pipework", bridge, containerid, strip)
+	log.Debugf("cli.get(): args for pipework  %+v %+v %+v \n", bridge, containerid, strip)
+	// get  pipe stdout
+	cmdReader, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Errorf("Error creating StdoutPipe for Cmd :%+v\n", err)
+	}
+	scanner := bufio.NewScanner(cmdReader)
+	go func() {
+		// watch the stdout for cmd
+		for scanner.Scan() {
+			log.Warnf("exec pipework out:%+v\n", scanner.Text())
+		}
+	}()
+	// run cmd
+	if err := cmd.Run(); err != nil {
+		log.Errorf("cli.get(): cmd exec %+v\n", err)
+	}
 }

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"regexp"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -32,9 +33,13 @@ func Run() {
 			log.Errorln(deleteErr)
 			return
 		}
-		ip := os.Args[2]
+		ipOrContainer := os.Args[2]
 		etcdPath := os.Args[3]
-		err = delete(ip, etcdPath)
+		if match, _ := regexp.MatchString(`\d+\.\d+\.\d+\.\d+`, ipOrContainer); match {
+			err = delete(ipOrContainer, etcdPath)
+		} else {
+			err = deleteByContainerid(ipOrContainer, etcdPath)
+		}
 	}
 	if command == "get" {
 		if len(os.Args) != 5 {
@@ -62,6 +67,16 @@ func Run() {
 		netmask := os.Args[3]
 		etcdPath := os.Args[4]
 		err = manage(bridge, netmask, etcdPath)
+	}
+	if command == "query" {
+		if len(os.Args) != 4 {
+			importErr := "the `query` command takes two arguments. See help"
+			log.Errorln(importErr)
+			return
+		}
+		containerid := os.Args[2]
+		etcdPath := os.Args[3]
+		err = query(containerid, etcdPath)
 	}
 	if command == "help" {
 		help()

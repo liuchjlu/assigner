@@ -1,6 +1,8 @@
 package etcdclient
 
 import (
+	"errors"
+	"regexp"
 	"strings"
 	"time"
 
@@ -100,12 +102,20 @@ func (e *Etcd) CreateAbsoluteDir(absoluteDir string) error {
 	return err
 }
 
-func (e *Etcd) GetAbsoluteDirIps(absoluteDir string) ([]Ip, error) {
+func (e *Etcd) GetAbsoluteDir(absoluteDir string) (*client.Response, error) {
 	// set recursive true
 	goption := new(client.GetOptions)
 	goption.Recursive = true
 
 	Response, err := e.client.Get(context.Background(), absoluteDir, goption)
+	if err != nil {
+		return nil, err
+	}
+	return Response, nil
+}
+
+func (e *Etcd) GetAbsoluteDirIps(absoluteDir string) ([]Ip, error) {
+	Response, err := e.GetAbsoluteDir(absoluteDir)
 	if err != nil {
 		return nil, err
 	}
@@ -121,4 +131,23 @@ func (e *Etcd) GetAbsoluteDirIps(absoluteDir string) ([]Ip, error) {
 		ips = append(ips, *ip)
 	}
 	return ips, err
+}
+
+func (e *Etcd) QueryContainerid(containerid string) (string, error) {
+	Response, err := e.GetAbsoluteDir(IpsPath)
+	if err != nil {
+		return "", err
+	}
+
+	rep, err := regexp.Compile(containerid + ".*")
+	if err != nil {
+		log.Errorf("etcdclient.QueryContainerid(): regexp error, err=", err)
+	}
+	for _, node := range Response.Node.Nodes {
+		if rep.MatchString(node.Value) {
+			paths := strings.Split(node.Key, "/")
+			return paths[len(paths)-1], nil
+		}
+	}
+	return "", errors.New("no such ip")
 }
