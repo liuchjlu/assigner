@@ -26,11 +26,14 @@ type Ip struct {
 	Gateway string `Gateway`
 }
 
-var ServcieTimeout = 50 * time.Second
-var BasePath = "/assigner"
-var AppsPath = BasePath + "/apps/"
-var IpsPath = BasePath + "/ips/"
-var ConfigPath = BasePath + "/config"
+var (
+	ServcieTimeout = 50 * time.Second
+	BasePath       = "/assigner"
+	AppsPath       = BasePath + "/apps/"
+	IpsPath        = BasePath + "/ips/"
+	IdsPath        = BasePath + "/ids/"
+	ConfigPath     = BasePath + "/config"
+)
 
 func NewEtcdClient(etcdpath string) (*Etcd, error) {
 	endpoints := strings.Split(etcdpath, ",")
@@ -71,13 +74,16 @@ func (e *Etcd) CreateAbsoluteKey(absoluteKey, value string) (string, error) {
 	return Response.Node.Value, nil
 }
 
-func (e *Etcd) DeleteKey(key string) error {
+func (e *Etcd) DeleteKey(key string) (string, error) {
 	return e.DeleteAbsoluteKey(IpsPath + key)
 }
 
-func (e *Etcd) DeleteAbsoluteKey(absoluteKey string) error {
-	_, err := e.client.Delete(context.Background(), absoluteKey, nil)
-	return err
+func (e *Etcd) DeleteAbsoluteKey(absoluteKey string) (string, error) {
+	Response, err := e.client.Delete(context.Background(), absoluteKey, nil)
+	if err != nil {
+		return "", err
+	}
+	return Response.PrevNode.Value, nil
 }
 
 func (e *Etcd) GetKey(key string) (string, error) {
@@ -134,20 +140,26 @@ func (e *Etcd) GetAbsoluteDirIps(absoluteDir string) ([]Ip, error) {
 }
 
 func (e *Etcd) QueryContainerid(containerid string) (string, error) {
-	Response, err := e.GetAbsoluteDir(IpsPath)
+	// try to query from idspath
+	id, err := e.GetKey(IdsPath + containerid)
 	if err != nil {
-		return "", err
-	}
-
-	rep, err := regexp.Compile(containerid + ".*")
-	if err != nil {
-		log.Errorf("etcdclient.QueryContainerid(): regexp error, err=", err)
-	}
-	for _, node := range Response.Node.Nodes {
-		if rep.MatchString(node.Value) {
-			paths := strings.Split(node.Key, "/")
-			return paths[len(paths)-1], nil
+		// cant find id from idspath,we need to use regexp,we query from ips
+		Response, err := e.GetAbsoluteDir(IpsPath)
+		if err != nil {
+			return "", err
 		}
+
+		rep, err := regexp.Compile(containerid + ".*")
+		if err != nil {
+			log.Errorf("etcdclient.QueryContainerid(): regexp error, err=", err)
+		}
+		for _, node := range Response.Node.Nodes {
+			if rep.MatchString(node.Value) {
+				paths := strings.Split(node.Key, "/")
+				return paths[len(paths)-1], nil
+			}
+		}
+		return "", errors.New("no such ip")
 	}
-	return "", errors.New("no such ip")
+	return id, nil
 }

@@ -100,6 +100,8 @@ func get(containerid, app, component string, etcdpath string) error {
 		log.Errorf("cli.get(): set container %+v three times with ip %+v failed, unlock this ip and exit!!!", containerid, ip)
 		return errors.New("set ip failed!!!")
 	}
+	// set containerid/ip  in etcd
+	client.CreateAbsoluteKey(etcdclient.IdsPath+containerid, ip)
 	log.Infoln("cli.get(): Get success")
 	return nil
 }

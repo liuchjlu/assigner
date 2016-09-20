@@ -20,6 +20,7 @@ func manage(bridge, netmask string, etcdpath string) error {
 	//create dir on etcd
 	client.CreateAbsoluteDir(etcdclient.AppsPath)
 	client.CreateAbsoluteDir(etcdclient.IpsPath)
+	client.CreateAbsoluteDir(etcdclient.IdsPath)
 
 	//create config on etcd
 	config := bridge + ";" + netmask
