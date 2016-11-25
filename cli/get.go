@@ -52,7 +52,7 @@ func get(containerid, app, component string, etcdpath string) error {
 	var ip = ""
 	var gateway = ""
 	// try to get one ip
-	for {
+	for times := 0; times < 10; times++ {
 		for i := 0; i < len(ips); i++ {
 			index := (start + i) % len(ips)
 			log.Debugf("cli.get(): try to lock ip=%+v \n", ips[index].Ip)
