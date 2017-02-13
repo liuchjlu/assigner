@@ -2,7 +2,7 @@ package cli
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/yansmallb/assigner/etcdclient"
+	"github.com/liuchjlu/assigner/etcdclient"
 )
 
 func query(containerid string, etcdPath string) error {

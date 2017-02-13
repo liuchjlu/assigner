@@ -5,7 +5,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/yansmallb/assigner/etcdclient"
+	"github.com/liuchjlu/assigner/etcdclient"
 )
 
 func delete(ip string, etcdPath string) error {

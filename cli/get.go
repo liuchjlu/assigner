@@ -9,9 +9,52 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/yansmallb/assigner/etcdclient"
-	"github.com/yansmallb/assigner/ping"
+	dockerclient "github.com/liuchjlu/assigner/dockerclient"
+	"github.com/liuchjlu/assigner/etcdclient"
+	"github.com/liuchjlu/assigner/ping"
 )
+
+func Getcontaineripfromcommiter(imagename, etcdpath string) (string, error) {
+	client, err := etcdclient.NewEtcdClient(etcdpath)
+	if err != nil {
+		log.Errorf("cli.query():%+v\n", err)
+		return "", err
+	}
+	ip, err := client.GetAbsoluteKey("/commiter/ips/" + imagename)
+	//Response, err := client.GetAbsoluteDir("/images/204/databus")
+	if err != nil {
+		log.Debugf("ip.Getcontaineripfromcommiter()  Failed to  get container ip from commiter: %+v\n", err)
+		return "", nil
+	}
+	if ip != "" {
+		return ip, nil
+	}
+
+	return "", nil
+}
+
+//Get imagename according to container id,which the images name don't container the info of registry.
+func Getcontainerimages(containerid string) (image string, err error) {
+	Psresponse, err := dockerclient.Dockerps()
+	if err != nil {
+		log.Fatalf("cli.GetContainerImagename():%+v\n", err)
+		return "", err
+	}
+	image = ""
+	for _, container := range Psresponse {
+
+		if strings.Contains(container.ID, containerid) {
+			image = container.Image
+		}
+	}
+	if image == "" {
+		log.Errorln("cli.GetContainerImagename(): Error when get image name")
+	}
+	imagefull := strings.Split(image, "/")
+	image = imagefull[len(imagefull)-1]
+	log.Debugf("cli.GetContainerImagename() ContainerId:%+v ImageName:%+v\n:", containerid, image)
+	return image, err
+}
 
 func get(containerid, app, component string, etcdpath string) error {
 	log.Infoln("cli.get():Start get")
@@ -51,32 +94,48 @@ func get(containerid, app, component string, etcdpath string) error {
 	start := rand.Intn(100)
 	var ip = ""
 	var gateway = ""
-	// try to get one ip
-	for times := 0; times < 10; times++ {
-		for i := 0; i < len(ips); i++ {
-			index := (start + i) % len(ips)
-			log.Debugf("cli.get(): try to lock ip=%+v \n", ips[index].Ip)
-			con, err := client.CreateKey(ips[index].Ip, containerid)
-			if err != nil {
-				log.Errorf("cli.get():%+v\n", err)
-				continue
-			}
-			if con != containerid {
-				log.Infof("cli.get():this container %+v lock this ip %+v and continue\n", con, ips[index])
-				continue
-			}
-			ip = ips[index].Ip
-			gateway = ips[index].Gateway
-			log.Infof("cli.get(): container %+v lock this ip %+v \n", containerid, ips[index])
-			break
-		}
-		if ip != "" {
-			break
-		}
-		log.Warnf("cli.get(): dont have empty ip , will start after 15 second again\n")
-		time.Sleep(15 * time.Second)
+	imagename, err := Getcontainerimages(containerid)
+	if err != nil {
+		log.Fatalf("cli.get():%+v\n", err)
+		return err
 	}
-
+	ip, err = Getcontaineripfromcommiter(imagename, etcdpath)
+	if err != nil {
+		log.Warnln("cli.get() Failed to get ip from commiter. Then program will try get ip from /assigner/ips.")
+	} else {
+		log.Infof("cli.get() GetContainerIpFromCommiter:%+v\n", ip)
+	}
+	ipsplit := strings.Split(ip, ".")
+	if ip != "" {
+		gateway = ipsplit[0] + "." + ipsplit[1] + "." + ipsplit[2] + "." + "1"
+	}
+	if ip == "" {
+		// try to get one ip
+		for times := 0; times < 10; times++ {
+			for i := 0; i < len(ips); i++ {
+				index := (start + i) % len(ips)
+				log.Debugf("cli.get(): try to lock ip=%+v \n", ips[index].Ip)
+				con, err := client.CreateKey(ips[index].Ip, containerid)
+				if err != nil {
+					log.Errorf("cli.get():%+v\n", err)
+					continue
+				}
+				if con != containerid {
+					log.Infof("cli.get():this container %+v lock this ip %+v and continue\n", con, ips[index])
+					continue
+				}
+				ip = ips[index].Ip
+				gateway = ips[index].Gateway
+				log.Infof("cli.get(): container %+v lock this ip %+v \n", containerid, ips[index])
+				break
+			}
+			if ip != "" {
+				break
+			}
+			log.Warnf("cli.get(): dont have empty ip , will start after 15 second again\n")
+			time.Sleep(15 * time.Second)
+		}
+	}
 	// has get ip and try to set ip
 	hasSet := false
 	strip := ip + "/" + netmask + "@" + gateway

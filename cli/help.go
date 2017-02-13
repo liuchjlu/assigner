@@ -7,7 +7,7 @@ import (
 func help() {
 	var helpString = `
   Usage: assigner COMMAND [args...]
-  Version: 0.3.1
+  Version: 0.3.2
   Author:yansmallb
   Email:yanxiaoben@iie.ac.cn
 

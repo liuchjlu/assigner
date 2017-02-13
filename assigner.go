@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/yansmallb/assigner/cli"
+	"github.com/liuchjlu/assigner/cli"
 	"io"
 	"os"
 

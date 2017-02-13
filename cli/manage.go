@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/yansmallb/assigner/etcdclient"
+	"github.com/liuchjlu/assigner/etcdclient"
 )
 
 func manage(bridge, netmask string, etcdpath string) error {

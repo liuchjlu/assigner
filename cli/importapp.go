@@ -6,7 +6,7 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/yansmallb/assigner/etcdclient"
+	"github.com/liuchjlu/assigner/etcdclient"
 )
 
 func importapp(filepath string, etcdpath string) error {
